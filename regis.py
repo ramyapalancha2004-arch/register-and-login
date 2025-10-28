@@ -1,71 +1,73 @@
+import streamlit as st
 import requests as r
 
-def registerdata():
-    username = input("enter the username: ")
-    password = input("enter the password: ")
-    mail = input("enter the mail: ")
+API_URL = "http://localhost:3000/posts"
 
-    if username == "" or password == "" or mail == "":
-        print("Please fill all details correctly.")
-        return registerdata()   
-    else:
-        return {"username": username, "password": password, "mail": mail}
-
-        
 
 def register():
-    res = r.get("http://localhost:3000/posts")
-    existinguser= res.json()
-    print("Existing:", existinguser)
+    st.subheader(" Register")
+    username = st.text_input("Enter Username")
+    password = st.text_input("Enter Password", type="password")
+    mail = st.text_input("Enter Email")
 
-    newuser= registerdata()
-    print("New:",  newuser)
+    if st.button("Register"):
+        if not username or not password or not mail:
+            st.warning(" Please fill all details correctly.")
+            return
 
-    exists=False
-    for u in existinguser:
-        if "username" in u and u["username"]==newuser["username"]:
-            exists=True
-        
+       
+        res = r.get(API_URL)
+        if res.status_code != 200:
+            st.error(" Unable to connect to the server.")
+            return
 
-    if exists:
-        print("Username already exists!")
-    else:
-        res1 = r.post("http://localhost:3000/posts", json=newuser)
-        print(res1.text)
-        print("Successfully registered!")
+        existing_users = res.json()
 
-register()
+        if any(u.get("username") == username for u in existing_users):
+            st.error("Username already exists! Choose another one.")
+        else:
+            new_user = {"username": username, "password": password, "mail": mail}
+            res1 = r.post(API_URL, json=new_user)
 
-
+            if res1.status_code == 201:
+                st.success("Registration Successful!")
+            else:
+                st.error(" Registration failed. Try again.")
 
 def login():
-    username = input("Enter your username: ")
-    password = input("Enter your password: ")
+    st.subheader("Login")
+    username = st.text_input("Enter Username", key="login_user")
+    password = st.text_input("Enter Password", type="password", key="login_pass")
 
-  
-    res = r.get("http://localhost:3000/posts")
-    existinguser = res.json()
+    if st.button("Login"):
+        res = r.get(API_URL)
+        if res.status_code != 200:
+            st.error("Unable to connect to the server.")
+            return
 
-    for u in existinguser:
-         if "username" in u and "password" in u:
-            if u["username"] == username and u["password"] == password:
-             found = True
-             break
+        users = res.json()
+        found = False
+        for u in users:
+            if u.get("username") == username and u.get("password") == password:
+                found = True
+                break
 
-    if found:
-        print("login successful! Welcome,", username)
-    else:
-        print("invalid username or password.")
+        if found:
+            st.success(f" Login Successful! Welcome, {username}.")
+        else:
+            st.error(" Invalid username or password.")
 
 def main():
-    print("1.register")
-    print("2.login")
-    choice = input("entter choice:")
-    if choice == "1":
-        register() 
-    elif choice == "2":
-        login()
+    st.title(" User Authentication App")
+    st.write("A simple Register & Login system using Streamlit + JSON Server")
+
+    menu = ["Register", "Login"]
+    choice = st.sidebar.selectbox("Select Option", menu)
+
+    if choice == "Register":
+        register()
     else:
-        print("Invalid choice! Try again.")
-if __name__=="__main__":
+        login()
+
+if __name__ == "__main__":
     main()
